@@ -162,3 +162,109 @@ loadResultForWeek = async function () {
 })();
 
 ensureActualHandshakesCheckboxList();
+
+(function addWeekLocking() {
+  function isLockedWeekId(weekId) {
+    return Boolean(state.weeks.find((week) => week.id === weekId)?.is_locked);
+  }
+
+  function weekLabel(week) {
+    const lockedSuffix = week.is_locked ? " (locked)" : "";
+    return `Week ${week.week_number} - ${week.title}${lockedSuffix}`;
+  }
+
+  const originalFillWeekSelectForLocks = fillWeekSelect;
+  fillWeekSelect = function (select, selectedWeekId = "") {
+    if (!select) return;
+    const includeLocked = select.id !== "weekSelect";
+    const weeks = includeLocked ? state.weeks : state.weeks.filter((week) => !week.is_locked);
+
+    select.innerHTML = "";
+    for (const week of weeks) {
+      select.appendChild(option(week.id, weekLabel(week), week.id === selectedWeekId));
+    }
+
+    if (select.id === "weekSelect" && !weeks.length) {
+      select.appendChild(option("", "No open weeks", true));
+    }
+  };
+
+  function ensureWeekLockControls() {
+    if (!isAdmin() || $("weekLockForm")) return;
+    const currentWeekCard = $("currentWeekForm")?.closest(".card");
+    if (!currentWeekCard) return;
+
+    const section = document.createElement("section");
+    section.className = "week-lock-controls";
+    section.innerHTML = `
+      <h3>Lock or unlock picks</h3>
+      <p class="muted">Locked weeks are hidden from the player picks dropdown and cannot be saved to.</p>
+      <form id="weekLockForm" class="grid">
+        <label>Week
+          <select id="lockWeekSelect" required></select>
+        </label>
+        <button id="toggleWeekLockButton" type="submit">Lock week</button>
+      </form>
+      <p id="weekLockStatus" class="status"></p>
+    `;
+    currentWeekCard.appendChild(section);
+    $("weekLockForm").addEventListener("submit", toggleWeekLock);
+    $("lockWeekSelect").addEventListener("change", updateWeekLockButton);
+  }
+
+  function updateWeekLockButton() {
+    const select = $("lockWeekSelect");
+    const button = $("toggleWeekLockButton");
+    if (!select || !button) return;
+    const week = state.weeks.find((item) => item.id === select.value);
+    button.textContent = week?.is_locked ? "Unlock week" : "Lock week";
+  }
+
+  async function toggleWeekLock(event) {
+    event.preventDefault();
+    if (!isAdmin()) return setText("weekLockStatus", "Admin access required.", true);
+    const weekId = $("lockWeekSelect").value;
+    const week = state.weeks.find((item) => item.id === weekId);
+    if (!week) return setText("weekLockStatus", "Choose a week.", true);
+
+    setText("weekLockStatus", week.is_locked ? "Unlocking..." : "Locking...");
+    try {
+      const res = await state.supabase.from("weeks").update({ is_locked: !week.is_locked }).eq("id", weekId);
+      if (res.error) throw res.error;
+      setText("weekLockStatus", week.is_locked ? "Week unlocked." : "Week locked.");
+      await requireData();
+    } catch (err) {
+      setText("weekLockStatus", err.message || "Could not update week lock.", true);
+    }
+  }
+
+  const originalRequireDataForLocks = requireData;
+  requireData = async function () {
+    const result = await originalRequireDataForLocks();
+    ensureWeekLockControls();
+    fillWeekSelect($("lockWeekSelect"), $("lockWeekSelect")?.value || currentWeekId());
+    updateWeekLockButton();
+    return result;
+  };
+
+  const originalSavePredictionForLocks = savePrediction;
+  savePrediction = async function (event) {
+    const weekId = $("weekSelect")?.value;
+    if (!weekId) {
+      event.preventDefault();
+      return setText("predictionStatus", "No open weeks are available for picks.", true);
+    }
+    if (isLockedWeekId(weekId)) {
+      event.preventDefault();
+      return setText("predictionStatus", "This week is locked, so picks can no longer be updated.", true);
+    }
+    return originalSavePredictionForLocks(event);
+  };
+
+  const originalLoadExistingPredictionForLocks = loadExistingPrediction;
+  loadExistingPrediction = async function () {
+    const weekId = $("weekSelect")?.value;
+    if (!weekId) return setText("predictionStatus", "No open weeks are available for picks.", true);
+    return originalLoadExistingPredictionForLocks();
+  };
+})();
