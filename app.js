@@ -109,7 +109,7 @@ async function loadData() {
   const [weeks, bakers, players] = await Promise.all([
     bakeoffApi.getWeeks(),
     bakeoffApi.getBakers(),
-    isAdmin() ? bakeoffApi.getPlayers() : Promise.resolve([]),
+    bakeoffApi.getPlayers(),
   ]);
 
   state.weeks = weeks;
@@ -131,6 +131,7 @@ function renderPredictionForm() {
   fillBakerSelect($("starBakerGuess"), state.activeBakers);
   fillBakerSelect($("eliminatedGuess"), state.activeBakers);
   fillBakerSelect($("handshakeGuess"), state.activeBakers, { blankLabel: "No handshake guess" });
+  if (typeof loadPlayerNameOptions === "function") loadPlayerNameOptions();
 }
 
 function renderAdminForms() {
