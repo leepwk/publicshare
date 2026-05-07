@@ -20,9 +20,7 @@ function fillAdminPlayerEditor() {
 }
 
 async function refreshAdminPlayerData() {
-  const playersRes = await state.supabase.from("players").select("id, name, avatar_path").order("name");
-  if (playersRes.error) throw playersRes.error;
-  state.players = playersRes.data || [];
+  state.players = await bakeoffApi.getPlayers();
   fillPlayerSelect(document.getElementById("photoPlayerSelect"));
   fillAdminPlayerEditor();
   if (typeof loadPlayerNameOptions === "function") await loadPlayerNameOptions();
@@ -64,8 +62,7 @@ async function uploadAdminPlayerPhoto(event) {
     const path = `${player.id}.${ext}`;
     const upload = await state.supabase.storage.from(PLAYER_PHOTO_BUCKET).upload(path, file, { upsert: true });
     if (upload.error) throw upload.error;
-    const update = await state.supabase.from("players").update({ avatar_path: path }).eq("id", player.id);
-    if (update.error) throw update.error;
+    await bakeoffApi.updatePlayerAvatar(player.id, path);
     document.getElementById("adminPlayerPhoto").value = "";
     setText("adminPlayerStatus", "Player photo updated.");
     await refreshAdminPlayerData();
@@ -136,11 +133,12 @@ function addAdminPlayerSection() {
   document.getElementById("deleteAdminPlayerButton")?.addEventListener("click", deleteAdminPlayer);
 }
 
-const adminPlayersSwitchTab = switchTab;
-switchTab = function (tabName) {
-  adminPlayersSwitchTab(tabName);
-  if (tabName === "admin" && isAdmin()) {
-    addAdminPlayerSection();
-    refreshAdminPlayerData().catch((err) => setText("adminPlayerStatus", err.message || "Could not load players.", true));
-  }
-};
+function loadAdminPlayerTools() {
+  if (!isAdmin()) return;
+  addAdminPlayerSection();
+  refreshAdminPlayerData().catch((err) => setText("adminPlayerStatus", err.message || "Could not load players.", true));
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelector('[data-tab="admin"]')?.addEventListener("click", loadAdminPlayerTools);
+});

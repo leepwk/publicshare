@@ -60,11 +60,18 @@ function option(value, label, selected = false) {
   return opt;
 }
 
-function fillWeekSelect(select, selectedWeekId = "") {
+function fillWeekSelect(select, { selectedWeekId = "", includeLocked = true, showLockedLabel = true, emptyLabel = null } = {}) {
   if (!select) return;
+  const weeks = includeLocked ? state.weeks : weekLocks.openWeeks(state.weeks);
   select.innerHTML = "";
-  for (const week of state.weeks) {
-    select.appendChild(option(week.id, `Week ${week.week_number} - ${week.title}`, week.id === selectedWeekId));
+
+  if (!weeks.length && emptyLabel) {
+    select.appendChild(option("", emptyLabel, true));
+    return;
+  }
+
+  for (const week of weeks) {
+    select.appendChild(option(week.id, weekLocks.label(week, { showLockedLabel }), week.id === selectedWeekId));
   }
 }
 
@@ -82,8 +89,9 @@ function fillPlayerSelect(select) {
   for (const player of state.players) select.appendChild(option(player.id, player.name));
 }
 
-function currentWeekId() {
-  return state.weeks.find((w) => w.is_current)?.id || state.weeks[0]?.id || "";
+function currentWeekId({ includeLocked = true } = {}) {
+  const weeks = includeLocked ? state.weeks : weekLocks.openWeeks(state.weeks);
+  return weeks.find((w) => w.is_current)?.id || weeks[0]?.id || "";
 }
 
 function publicPhotoUrl(avatarPath) {
@@ -97,44 +105,64 @@ function avatarHtml(avatarPath, playerName) {
   return `<img class="avatar" src="${escapeAttribute(url)}" alt="${escapeAttribute(playerName || "Player photo")}">`;
 }
 
-async function requireData() {
-  const requests = [
-    state.supabase.from("weeks").select("id, week_number, title, is_current, is_locked").order("week_number"),
-    state.supabase.from("bakers").select("id, name, is_active, eliminated_week_id").order("name"),
-  ];
+async function loadData() {
+  const [weeks, bakers, players] = await Promise.all([
+    bakeoffApi.getWeeks(),
+    bakeoffApi.getBakers(),
+    bakeoffApi.getPlayers(),
+  ]);
 
-  if (isAdmin()) {
-    requests.push(state.supabase.from("players").select("id, name, avatar_path").order("name"));
-  }
-
-  const [weeksRes, bakersRes, playersRes] = await Promise.all(requests);
-  if (weeksRes.error) throw weeksRes.error;
-  if (bakersRes.error) throw bakersRes.error;
-  if (playersRes?.error) throw playersRes.error;
-
-  state.weeks = weeksRes.data || [];
-  state.bakers = bakersRes.data || [];
-  state.players = playersRes?.data || [];
+  state.weeks = weeks;
+  state.bakers = bakers;
+  state.players = players;
   state.activeBakers = state.bakers.filter((b) => b.is_active);
+}
 
-  const cw = currentWeekId();
-  fillWeekSelect($("weekSelect"), cw);
-  fillWeekSelect($("resultWeekSelect"), cw);
-  fillWeekSelect($("currentWeekSelect"), cw);
+function renderPredictionForm() {
+  const selectedWeekId = currentWeekId({ includeLocked: false });
+  fillWeekSelect($("weekSelect"), {
+    selectedWeekId,
+    includeLocked: false,
+    showLockedLabel: false,
+    emptyLabel: "No open weeks",
+  });
 
   fillBakerSelect($("technicalGuess"), state.activeBakers);
   fillBakerSelect($("starBakerGuess"), state.activeBakers);
   fillBakerSelect($("eliminatedGuess"), state.activeBakers);
   fillBakerSelect($("handshakeGuess"), state.activeBakers, { blankLabel: "No handshake guess" });
+  if (typeof loadPlayerNameOptions === "function") loadPlayerNameOptions();
+}
 
-  if (isAdmin()) {
-    fillBakerSelect($("actualTechnical"), state.bakers, { blankLabel: "Choose baker" });
-    fillBakerSelect($("actualStarBaker"), state.bakers, { blankLabel: "Choose baker" });
-    fillBakerSelect($("actualEliminated"), state.bakers, { blankLabel: "Choose baker" });
-    fillBakerSelect($("actualHandshakes"), state.bakers, { blankLabel: null });
-    fillPlayerSelect($("photoPlayerSelect"));
-    renderBakerList();
-  }
+function renderAdminForms() {
+  if (!isAdmin()) return;
+
+  const selectedWeekId = currentWeekId();
+  fillWeekSelect($("resultWeekSelect"), { selectedWeekId });
+  fillWeekSelect($("currentWeekSelect"), { selectedWeekId });
+  fillWeekSelect($("lockWeekSelect"), { selectedWeekId: $("lockWeekSelect")?.value || selectedWeekId });
+  updateWeekLockButton();
+
+  fillBakerSelect($("actualTechnical"), state.bakers, { blankLabel: "Choose baker" });
+  fillBakerSelect($("actualStarBaker"), state.bakers, { blankLabel: "Choose baker" });
+  fillBakerSelect($("actualEliminated"), state.bakers, { blankLabel: "Choose baker" });
+  renderActualHandshakeCheckboxes(state.bakers);
+  fillPlayerSelect($("photoPlayerSelect"));
+  renderBakerList();
+}
+
+function renderForms() {
+  renderPredictionForm();
+  renderAdminForms();
+}
+
+async function refreshAppData() {
+  await loadData();
+  renderForms();
+}
+
+async function requireData() {
+  await refreshAppData();
 }
 
 function renderBakerList() {
@@ -147,39 +175,113 @@ function renderBakerList() {
   el.innerHTML = `<table><thead><tr><th>Baker</th><th>Status</th></tr></thead><tbody>${state.bakers.map((b) => `<tr><td>${escapeHtml(b.name)}</td><td>${b.is_active ? "Active" : "Eliminated"}</td></tr>`).join("")}</tbody></table>`;
 }
 
+function selectedActualHandshakeIds() {
+  return Array.from($("actualHandshakes")?.querySelectorAll('input[type="checkbox"]:checked') || [])
+    .map((input) => input.value)
+    .filter(Boolean);
+}
+
+function setSelectedActualHandshakeIds(ids) {
+  const selected = new Set(ids || []);
+  $("actualHandshakes")?.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    input.checked = selected.has(input.value);
+  });
+}
+
+function renderActualHandshakeCheckboxes(bakers) {
+  const list = $("actualHandshakes");
+  if (!list) return;
+  const selected = new Set(selectedActualHandshakeIds());
+  list.innerHTML = "";
+
+  if (!bakers.length) {
+    list.innerHTML = '<p class="muted">No bakers available.</p>';
+    return;
+  }
+
+  for (const baker of bakers) {
+    const id = `actualHandshake-${baker.id}`;
+    const label = document.createElement("label");
+    label.className = "checkbox-option";
+    label.setAttribute("for", id);
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = id;
+    input.value = baker.id;
+    input.checked = selected.has(baker.id);
+
+    const text = document.createElement("span");
+    text.textContent = baker.name;
+
+    label.append(input, text);
+    list.appendChild(label);
+  }
+}
+
+function updateWeekLockButton() {
+  const select = $("lockWeekSelect");
+  const button = $("toggleWeekLockButton");
+  if (!select || !button) return;
+  const week = state.weeks.find((item) => item.id === select.value);
+  button.textContent = week?.is_locked ? "Unlock week" : "Lock week";
+}
+
+async function toggleWeekLock(event) {
+  event.preventDefault();
+  if (!isAdmin()) return setText("weekLockStatus", "Admin access required.", true);
+
+  const weekId = $("lockWeekSelect").value;
+  const week = state.weeks.find((item) => item.id === weekId);
+  if (!week) return setText("weekLockStatus", "Choose a week.", true);
+
+  const nextLockedValue = !week.is_locked;
+  setText("weekLockStatus", nextLockedValue ? "Locking..." : "Unlocking...");
+
+  try {
+    await bakeoffApi.setWeekLocked(weekId, nextLockedValue);
+    setText("weekLockStatus", nextLockedValue ? "Week locked." : "Week unlocked.");
+    await refreshAppData();
+  } catch (err) {
+    setText("weekLockStatus", err.message || "Could not update week lock.", true);
+  }
+}
+
 async function findPlayerByName(name) {
   const cleanName = normaliseName(name);
   if (!cleanName) throw new Error("Enter your player name.");
-  const playersRes = await state.supabase.from("players").select("id, name, avatar_path");
-  if (playersRes.error) throw playersRes.error;
-  return (playersRes.data || []).find((player) => normaliseNameKey(player.name) === normaliseNameKey(cleanName)) || null;
+  const players = state.players.length ? state.players : await bakeoffApi.getPlayers();
+  return players.find((player) => normaliseNameKey(player.name) === normaliseNameKey(cleanName)) || null;
 }
 
 async function getOrCreatePlayer(name) {
   const cleanName = normaliseName(name);
   const existing = await findPlayerByName(cleanName);
   if (existing) return existing;
-  const created = await state.supabase.from("players").insert({ name: cleanName }).select("id, name, avatar_path").single();
-  if (created.error) throw created.error;
-  return created.data;
+  return bakeoffApi.createPlayer(cleanName);
 }
 
 async function savePrediction(event) {
   event.preventDefault();
+
+  const weekId = $("weekSelect").value;
+  if (!weekId) return setText("predictionStatus", "No open weeks are available for picks.", true);
+  if (weekLocks.isLocked(state.weeks, weekId)) {
+    return setText("predictionStatus", "This week is locked, so picks can no longer be updated.", true);
+  }
+
   setText("predictionStatus", "Saving...");
   try {
     const player = await getOrCreatePlayer($("playerName").value);
-    const payload = {
+    await bakeoffApi.savePrediction({
       player_id: player.id,
-      week_id: $("weekSelect").value,
+      week_id: weekId,
       technical_winner_baker_id: $("technicalGuess").value,
       star_baker_id: $("starBakerGuess").value,
       eliminated_baker_id: $("eliminatedGuess").value,
       handshake_baker_id: $("handshakeGuess").value || null,
       updated_at: new Date().toISOString(),
-    };
-    const res = await state.supabase.from("predictions").upsert(payload, { onConflict: "player_id,week_id" });
-    if (res.error) throw res.error;
+    });
     setText("predictionStatus", "Picks saved.");
     await renderLeaderboard();
   } catch (err) {
@@ -188,17 +290,21 @@ async function savePrediction(event) {
 }
 
 async function loadExistingPrediction() {
+  const weekId = $("weekSelect").value;
+  if (!weekId) return setText("predictionStatus", "No open weeks are available for picks.", true);
+
   setText("predictionStatus", "Loading...");
   try {
     const player = await findPlayerByName($("playerName").value);
     if (!player) throw new Error("No picks found for that player name yet.");
-    const predRes = await state.supabase.from("predictions").select("technical_winner_baker_id, star_baker_id, eliminated_baker_id, handshake_baker_id").eq("player_id", player.id).eq("week_id", $("weekSelect").value).maybeSingle();
-    if (predRes.error) throw predRes.error;
-    if (!predRes.data) throw new Error("No picks found for this week yet.");
-    $("technicalGuess").value = predRes.data.technical_winner_baker_id || "";
-    $("starBakerGuess").value = predRes.data.star_baker_id || "";
-    $("eliminatedGuess").value = predRes.data.eliminated_baker_id || "";
-    $("handshakeGuess").value = predRes.data.handshake_baker_id || "";
+
+    const prediction = await bakeoffApi.getPrediction(player.id, weekId);
+    if (!prediction) throw new Error("No picks found for this week yet.");
+
+    $("technicalGuess").value = prediction.technical_winner_baker_id || "";
+    $("starBakerGuess").value = prediction.star_baker_id || "";
+    $("eliminatedGuess").value = prediction.eliminated_baker_id || "";
+    $("handshakeGuess").value = prediction.handshake_baker_id || "";
     setText("predictionStatus", "Loaded existing picks.");
   } catch (err) {
     setText("predictionStatus", err.message || "Could not load picks.", true);
@@ -209,32 +315,24 @@ async function saveResults(event) {
   event.preventDefault();
   if (!isAdmin()) return setText("resultStatus", "Admin access required.", true);
   setText("resultStatus", "Saving...");
+
   try {
     const weekId = $("resultWeekSelect").value;
     const eliminatedId = $("actualEliminated").value || null;
-    const payload = {
+    const result = await bakeoffApi.saveResult({
       week_id: weekId,
       technical_winner_baker_id: $("actualTechnical").value || null,
       star_baker_id: $("actualStarBaker").value || null,
       eliminated_baker_id: eliminatedId,
       updated_at: new Date().toISOString(),
-    };
-    const resultRes = await state.supabase.from("results").upsert(payload, { onConflict: "week_id" }).select("id").single();
-    if (resultRes.error) throw resultRes.error;
-    const resultId = resultRes.data.id;
-    const delHandshakeRes = await state.supabase.from("result_handshakes").delete().eq("result_id", resultId);
-    if (delHandshakeRes.error) throw delHandshakeRes.error;
-    const selectedHandshakeIds = Array.from($("actualHandshakes").selectedOptions).map((o) => o.value).filter(Boolean);
-    if (selectedHandshakeIds.length) {
-      const insertRes = await state.supabase.from("result_handshakes").insert(selectedHandshakeIds.map((baker_id) => ({ result_id: resultId, baker_id })));
-      if (insertRes.error) throw insertRes.error;
-    }
-    if (eliminatedId) {
-      const elimRes = await state.supabase.from("bakers").update({ is_active: false, eliminated_week_id: weekId }).eq("id", eliminatedId);
-      if (elimRes.error) throw elimRes.error;
-    }
+    });
+
+    await bakeoffApi.replaceResultHandshakes(result.id, selectedActualHandshakeIds());
+    if (eliminatedId) await bakeoffApi.markBakerEliminated(eliminatedId, weekId);
+
     setText("resultStatus", "Results saved. Active baker list updated.");
-    await requireData();
+    await refreshAppData();
+    await loadResultForWeek();
     await renderLeaderboard();
   } catch (err) {
     setText("resultStatus", err.message || "Could not save results.", true);
@@ -247,10 +345,9 @@ async function addBaker(event) {
   const name = normaliseName($("newBakerName").value);
   if (!name) return;
   try {
-    const res = await state.supabase.from("bakers").insert({ name, is_active: true });
-    if (res.error) throw res.error;
+    await bakeoffApi.addBaker(name);
     $("newBakerName").value = "";
-    await requireData();
+    await refreshAppData();
   } catch (err) {
     alert(err.message || "Could not add baker.");
   }
@@ -261,13 +358,9 @@ async function setCurrentWeek(event) {
   if (!isAdmin()) return setText("weekStatus", "Admin access required.", true);
   setText("weekStatus", "Updating...");
   try {
-    const chosen = $("currentWeekSelect").value;
-    const clearRes = await state.supabase.from("weeks").update({ is_current: false }).neq("id", chosen);
-    if (clearRes.error) throw clearRes.error;
-    const setRes = await state.supabase.from("weeks").update({ is_current: true }).eq("id", chosen);
-    if (setRes.error) throw setRes.error;
+    await bakeoffApi.setCurrentWeek($("currentWeekSelect").value);
     setText("weekStatus", "Current week updated.");
-    await requireData();
+    await refreshAppData();
   } catch (err) {
     setText("weekStatus", err.message || "Could not update current week.", true);
   }
@@ -276,17 +369,15 @@ async function setCurrentWeek(event) {
 async function renderLeaderboard() {
   const lb = $("leaderboard");
   const all = $("allPredictions");
+  if (!lb || !all) return;
+
   lb.innerHTML = `<p class="muted">Loading...</p>`;
   all.innerHTML = "";
   try {
-    const leaderboardRes = await state.supabase.from("leaderboard").select("player_name,total_points,avatar_path");
-    if (leaderboardRes.error) throw leaderboardRes.error;
-    const rows = leaderboardRes.data || [];
+    const rows = await bakeoffApi.getLeaderboard();
     lb.innerHTML = rows.length ? `<table><thead><tr><th>Position</th><th>Player</th><th>Points</th></tr></thead><tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${avatarHtml(r.avatar_path, r.player_name)}${escapeHtml(r.player_name)}</td><td>${r.total_points}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">No scores yet.</p>`;
 
-    const predictionsRes = await state.supabase.from("predictions").select(`id,players(name),weeks(week_number,title),technical:bakers!predictions_technical_winner_baker_id_fkey(name),star:bakers!predictions_star_baker_id_fkey(name),eliminated:bakers!predictions_eliminated_baker_id_fkey(name),handshake:bakers!predictions_handshake_baker_id_fkey(name)`).order("created_at", { ascending: false });
-    if (predictionsRes.error) throw predictionsRes.error;
-    const picks = predictionsRes.data || [];
+    const picks = await bakeoffApi.getAllPredictions();
     all.innerHTML = picks.length ? `<table><thead><tr><th>Player</th><th>Week</th><th>Technical</th><th>Star baker</th><th>Eliminated</th><th>Handshake</th></tr></thead><tbody>${picks.map((p) => `<tr><td>${escapeHtml(p.players?.name || "")}</td><td>Week ${p.weeks?.week_number || ""} - ${escapeHtml(p.weeks?.title || "")}</td><td>${escapeHtml(p.technical?.name || "")}</td><td>${escapeHtml(p.star?.name || "")}</td><td>${escapeHtml(p.eliminated?.name || "")}</td><td>${escapeHtml(p.handshake?.name || "No guess")}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">No picks entered yet.</p>`;
   } catch (err) {
     lb.innerHTML = `<p class="status error">${escapeHtml(err.message || "Could not load leaderboard.")}</p>`;
@@ -297,17 +388,14 @@ async function loadResultForWeek() {
   if (!isAdmin()) return;
   try {
     const weekId = $("resultWeekSelect").value;
-    const resultRes = await state.supabase.from("results").select("id, technical_winner_baker_id, star_baker_id, eliminated_baker_id").eq("week_id", weekId).maybeSingle();
-    if (resultRes.error) throw resultRes.error;
-    $("actualTechnical").value = resultRes.data?.technical_winner_baker_id || "";
-    $("actualStarBaker").value = resultRes.data?.star_baker_id || "";
-    $("actualEliminated").value = resultRes.data?.eliminated_baker_id || "";
-    Array.from($("actualHandshakes").options).forEach((o) => (o.selected = false));
-    if (resultRes.data?.id) {
-      const hsRes = await state.supabase.from("result_handshakes").select("baker_id").eq("result_id", resultRes.data.id);
-      if (hsRes.error) throw hsRes.error;
-      const ids = new Set((hsRes.data || []).map((x) => x.baker_id));
-      Array.from($("actualHandshakes").options).forEach((o) => (o.selected = ids.has(o.value)));
+    const result = await bakeoffApi.getResult(weekId);
+    $("actualTechnical").value = result?.technical_winner_baker_id || "";
+    $("actualStarBaker").value = result?.star_baker_id || "";
+    $("actualEliminated").value = result?.eliminated_baker_id || "";
+    setSelectedActualHandshakeIds([]);
+
+    if (result?.id) {
+      setSelectedActualHandshakeIds(await bakeoffApi.getResultHandshakeIds(result.id));
     }
   } catch (err) {
     setText("resultStatus", err.message || "Could not load result.", true);
@@ -326,10 +414,9 @@ async function uploadPlayerPhoto(event) {
     const path = `${playerId}.${ext}`;
     const upload = await state.supabase.storage.from(PLAYER_PHOTO_BUCKET).upload(path, file, { upsert: true });
     if (upload.error) throw upload.error;
-    const update = await state.supabase.from("players").update({ avatar_path: path }).eq("id", playerId);
-    if (update.error) throw update.error;
+    await bakeoffApi.updatePlayerAvatar(playerId, path);
     setText("playerPhotoStatus", "Uploaded!");
-    await requireData();
+    await refreshAppData();
     await renderLeaderboard();
   } catch (err) {
     setText("playerPhotoStatus", err.message || "Could not upload photo.", true);
@@ -371,9 +458,25 @@ async function startApp() {
   setText("loginStatus", "");
   handleAdminVisibility();
   switchTab("entry");
-  await requireData();
+  await refreshAppData();
   if (isAdmin()) await loadResultForWeek();
   await renderLeaderboard();
+}
+
+function bindEvents() {
+  $("loginForm").addEventListener("submit", handleLogin);
+  $("logoutButton").addEventListener("click", logout);
+  $("predictionForm").addEventListener("submit", savePrediction);
+  $("loadExistingButton").addEventListener("click", loadExistingPrediction);
+  $("resultForm").addEventListener("submit", saveResults);
+  $("bakerForm").addEventListener("submit", addBaker);
+  $("currentWeekForm").addEventListener("submit", setCurrentWeek);
+  $("weekLockForm")?.addEventListener("submit", toggleWeekLock);
+  $("lockWeekSelect")?.addEventListener("change", updateWeekLockButton);
+  $("refreshButton").addEventListener("click", renderLeaderboard);
+  $("resultWeekSelect").addEventListener("change", loadResultForWeek);
+  $("playerPhotoForm")?.addEventListener("submit", uploadPlayerPhoto);
+  document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
 }
 
 async function init() {
@@ -382,17 +485,7 @@ async function init() {
     return;
   }
   state.supabase = window.supabase.createClient(window.BAKEOFF_SUPABASE_URL, window.BAKEOFF_SUPABASE_ANON_KEY);
-  $("loginForm").addEventListener("submit", handleLogin);
-  $("logoutButton").addEventListener("click", logout);
-  $("predictionForm").addEventListener("submit", savePrediction);
-  $("loadExistingButton").addEventListener("click", loadExistingPrediction);
-  $("resultForm").addEventListener("submit", saveResults);
-  $("bakerForm").addEventListener("submit", addBaker);
-  $("currentWeekForm").addEventListener("submit", setCurrentWeek);
-  $("refreshButton").addEventListener("click", renderLeaderboard);
-  $("resultWeekSelect").addEventListener("change", loadResultForWeek);
-  $("playerPhotoForm")?.addEventListener("submit", uploadPlayerPhoto);
-  document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
+  bindEvents();
   const { data } = await state.supabase.auth.getSession();
   if (data.session) await startApp();
 }
