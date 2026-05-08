@@ -457,7 +457,7 @@ async function startApp() {
   show("logoutButton", true);
   setText("loginStatus", "");
   handleAdminVisibility();
-  switchTab("entry");
+  switchTab("leaderboard");
   await refreshAppData();
   if (isAdmin()) await loadResultForWeek();
   await renderLeaderboard();
