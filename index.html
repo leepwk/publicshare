@@ -13,7 +13,7 @@
   <script defer src="./config.js"></script>
   <script defer src="./api.js?v=1"></script>
   <script defer src="./week-locks.js?v=1"></script>
-  <script defer src="./app.js?v=6"></script>
+  <script defer src="./app.js?v=7"></script>
   <script defer src="./split-leaderboard-all-picks.js?v=1"></script>
   <script defer src="./admin-handshake-checkboxes.js?v=2"></script>
   <script defer src="./default-leaderboard.js?v=2"></script>
@@ -21,7 +21,7 @@
   <script defer src="./score-breakdown.js?v=2"></script>
   <script defer src="./admin-players.js?v=1"></script>
   <script defer src="./player-combo.js?v=1"></script>
-  <script defer src="./all-picks-entry-card.js?v=2"></script>
+  <script defer src="./all-picks-entry-card.js?v=3"></script>
   <script defer src="./all-picks-filters.js?v=1"></script>
   <script defer src="./leaderboard-medals.js?v=1"></script>
 </head>
@@ -58,6 +58,7 @@
     <section id="appView" class="hidden">
       <nav class="tabs" aria-label="Sections">
         <button class="tab active" data-tab="entry">Enter picks</button>
+        <button class="tab" data-tab="allPicks">Pick history</button>
         <button class="tab" data-tab="leaderboard">Leaderboard</button>
         <button class="tab" data-tab="admin">Admin</button>
       </nav>
@@ -95,6 +96,14 @@
         <p id="predictionStatus" class="status"></p>
       </section>
 
+      <section id="allPicksTab" class="tab-panel card hidden">
+        <div class="section-title">
+          <h2>Pick history</h2>
+          <button id="refreshAllPicksButton" class="secondary" type="button">Refresh</button>
+        </div>
+        <div id="allPredictions"></div>
+      </section>
+
       <section id="leaderboardTab" class="tab-panel card hidden">
         <div class="section-title">
           <h2>Leaderboard</h2>
@@ -102,7 +111,6 @@
         </div>
         <div id="leaderboard"></div>
         <div id="actualResults"></div>
-        <div id="allPredictions"></div>
       </section>
 
       <section id="adminTab" class="tab-panel hidden">
