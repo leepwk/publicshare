@@ -11,7 +11,7 @@ window.bakeoffApi = {
   async getBakers() {
     const res = await state.supabase
       .from("bakers")
-      .select("id, name, is_active, eliminated_week_id")
+      .select("id, name, information, avatar_path, is_active, eliminated_week_id")
       .order("name");
     if (res.error) throw res.error;
     return res.data || [];
@@ -87,8 +87,24 @@ window.bakeoffApi = {
     if (res.error) throw res.error;
   },
 
-  async addBaker(name) {
-    const res = await state.supabase.from("bakers").insert({ name, is_active: true });
+  async addBaker(payload) {
+    const baker = typeof payload === "string" ? { name: payload } : payload;
+    const res = await state.supabase
+      .from("bakers")
+      .insert({
+        name: baker.name,
+        information: baker.information || null,
+        avatar_path: baker.avatar_path || null,
+        is_active: true,
+      })
+      .select("id, name, information, avatar_path, is_active, eliminated_week_id")
+      .single();
+    if (res.error) throw res.error;
+    return res.data;
+  },
+
+  async updateBaker(bakerId, payload) {
+    const res = await state.supabase.from("bakers").update(payload).eq("id", bakerId);
     if (res.error) throw res.error;
   },
 

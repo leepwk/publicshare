@@ -11,7 +11,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./config.js"></script>
-  <script defer src="./api.js?v=1"></script>
+  <script defer src="./api.js?v=2"></script>
   <script defer src="./week-locks.js?v=1"></script>
   <script defer src="./app.js?v=7"></script>
   <script defer src="./split-leaderboard-all-picks.js?v=1"></script>
@@ -22,6 +22,8 @@
   <script defer src="./admin-players.js?v=1"></script>
   <script defer src="./player-combo.js?v=1"></script>
   <script defer src="./all-picks-entry-card.js?v=3"></script>
+  <script defer src="./bakers-tab.js?v=2"></script>
+  <script defer src="./admin-bakers.js?v=1"></script>
   <script defer src="./all-picks-filters.js?v=1"></script>
   <script defer src="./leaderboard-medals.js?v=1"></script>
 </head>
@@ -59,6 +61,7 @@
       <nav class="tabs" aria-label="Sections">
         <button class="tab active" data-tab="entry">Enter picks</button>
         <button class="tab" data-tab="allPicks">Pick history</button>
+        <button class="tab" data-tab="bakers">Bakers</button>
         <button class="tab" data-tab="leaderboard">Leaderboard</button>
         <button class="tab" data-tab="admin">Admin</button>
       </nav>
@@ -104,6 +107,13 @@
         <div id="allPredictions"></div>
       </section>
 
+      <section id="bakersTab" class="tab-panel card hidden">
+        <div class="section-title">
+          <h2>Bakers</h2>
+        </div>
+        <div id="bakersDirectory"></div>
+      </section>
+
       <section id="leaderboardTab" class="tab-panel card hidden">
         <div class="section-title">
           <h2>Leaderboard</h2>
@@ -116,10 +126,20 @@
       <section id="adminTab" class="tab-panel hidden">
         <section class="card">
           <h2>Competition setup</h2>
-          <form id="bakerForm" class="inline-form">
-            <input id="newBakerName" type="text" placeholder="Add baker name" required>
+          <p class="muted">Add new bakers with optional information and a photo.</p>
+          <form id="bakerForm" class="grid">
+            <label>Baker name
+              <input id="newBakerName" type="text" placeholder="Add baker name" required>
+            </label>
+            <label class="span-two">Information
+              <textarea id="newBakerInformation" placeholder="Add a short baker description"></textarea>
+            </label>
+            <label class="span-two">Photo
+              <input id="newBakerPhoto" type="file" accept="image/*">
+            </label>
             <button type="submit">Add baker</button>
           </form>
+          <p id="bakerStatus" class="status"></p>
           <div id="bakerList"></div>
         </section>
 
