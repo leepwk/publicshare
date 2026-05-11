@@ -49,8 +49,9 @@ function renderAdminBakerAvatar(baker) {
 
 function fillAdminBakerEditor() {
   const select = document.getElementById("adminBakerSelect");
+  const nameInput = document.getElementById("adminBakerName");
   const information = document.getElementById("adminBakerInformation");
-  if (!select || !information) return;
+  if (!select || !nameInput || !information) return;
 
   const previous = select.value;
   select.innerHTML = "";
@@ -58,6 +59,7 @@ function fillAdminBakerEditor() {
   for (const baker of state.bakers) select.appendChild(option(baker.id, baker.name, baker.id === previous));
 
   const baker = selectedAdminBaker();
+  nameInput.value = baker?.name || "";
   information.value = baker?.information || "";
   renderAdminBakerAvatar(baker);
 }
@@ -99,14 +101,16 @@ async function updateAdminBaker(event) {
   if (!isAdmin()) return setText("adminBakerStatus", "Admin access required.", true);
 
   const baker = selectedAdminBaker();
+  const name = normaliseName(document.getElementById("adminBakerName")?.value);
   const information = document.getElementById("adminBakerInformation")?.value.trim() || null;
   const file = document.getElementById("adminBakerPhoto")?.files?.[0];
 
   if (!baker) return setText("adminBakerStatus", "Choose a baker.", true);
+  if (!name) return setText("adminBakerStatus", "Enter a baker name.", true);
 
   try {
     setText("adminBakerStatus", "Saving...");
-    await bakeoffApi.updateBaker(baker.id, { information });
+    await bakeoffApi.updateBaker(baker.id, { name, information });
 
     if (file) {
       await uploadBakerPhoto(baker, file);
@@ -130,10 +134,13 @@ function addAdminBakerSection() {
   section.className = "card";
   section.innerHTML = `
     <h2>Manage bakers</h2>
-    <p class="muted">Update a baker's information and replace their avatar. Bakers are not deleted here.</p>
+    <p class="muted">Update a baker's name, information and avatar. Bakers are not deleted here.</p>
     <form id="adminBakerForm" class="grid">
       <label>Baker
         <select id="adminBakerSelect" required></select>
+      </label>
+      <label>Name
+        <input id="adminBakerName" type="text" required>
       </label>
       <label class="span-two">Information
         <textarea id="adminBakerInformation" placeholder="Add a short baker description"></textarea>
