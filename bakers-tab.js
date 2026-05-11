@@ -2,6 +2,15 @@ function bakerPhotoUrl(avatarPath) {
   return publicPhotoUrl(avatarPath);
 }
 
+function bakerInformationHtml(information) {
+  const paragraphs = String(information || "No information added yet.")
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  return paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("");
+}
+
 function bakerAvatarHtml(baker) {
   const url = bakerPhotoUrl(baker.avatar_path);
   if (!url) {
@@ -25,13 +34,15 @@ function renderBakersDirectory() {
     <div class="baker-grid">
       ${state.bakers.map((baker) => `
         <article class="baker-card">
-          ${bakerAvatarHtml(baker)}
-          <div class="baker-card-body">
+          <div class="baker-card-header">
+            ${bakerAvatarHtml(baker)}
             <div class="baker-card-heading">
               <h3>${escapeHtml(baker.name)}</h3>
               <span class="baker-status ${baker.is_active ? "active" : "eliminated"}">${baker.is_active ? "Active" : "Eliminated"}</span>
             </div>
-            <p class="muted">${escapeHtml(baker.information || "No information added yet.")}</p>
+          </div>
+          <div class="baker-information muted">
+            ${bakerInformationHtml(baker.information)}
           </div>
         </article>
       `).join("")}
@@ -51,18 +62,22 @@ switchTab = function (tabName) {
   style.textContent = `
     .baker-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
     }
 
     .baker-card {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
       border: 1px solid var(--border);
       border-radius: 18px;
-      padding: 16px;
+      padding: 18px;
       background: #fffdf9;
+    }
+
+    .baker-card-header {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
     }
 
     .baker-avatar {
@@ -83,20 +98,22 @@ switchTab = function (tabName) {
       font-weight: 800;
     }
 
-    .baker-card-body {
+    .baker-card-heading {
       min-width: 0;
     }
 
-    .baker-card-heading {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
+    .baker-card-heading h3 {
+      margin: 0 0 8px;
     }
 
-    .baker-card-heading h3 {
-      margin: 0;
+    .baker-information p {
+      margin: 0 0 12px;
+      line-height: 1.55;
+      white-space: normal;
+    }
+
+    .baker-information p:last-child {
+      margin-bottom: 0;
     }
 
     .baker-status {
@@ -119,8 +136,14 @@ switchTab = function (tabName) {
       background: #fffaf7;
     }
 
-    @media (max-width: 560px) {
-      .baker-card {
+    @media (max-width: 760px) {
+      .baker-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .baker-card-header {
         display: block;
       }
 
