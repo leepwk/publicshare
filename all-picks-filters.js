@@ -110,10 +110,4 @@ function setupAllPicksFilters() {
   applyAllPicksFilters();
 }
 
-const originalRenderAllPicksForFilters = renderAllPicks;
-renderAllPicks = async function () {
-  await originalRenderAllPicksForFilters();
-  setupAllPicksFilters();
-};
-
 document.addEventListener("DOMContentLoaded", setupAllPicksFilters);
