@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bake Off Tipping</title>
   <link rel="icon" type="image/x-icon" href="./assets/favicon.ico">
-  <link rel="stylesheet" href="./styles.css?v=4" />
+  <link rel="stylesheet" href="./styles.css?v=5" />
   <style>
     .header-logo{display:block;width:min(100%,1120px);height:auto}.header-title-fallback{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   </style>
@@ -15,16 +15,15 @@
   <script defer src="./week-locks.js?v=1"></script>
   <script defer src="./app.js?v=7"></script>
   <script defer src="./split-leaderboard-all-picks.js?v=1"></script>
-  <script defer src="./admin-handshake-checkboxes.js?v=2"></script>
   <script defer src="./default-leaderboard.js?v=2"></script>
   <script defer src="./weekly-results.js?v=1"></script>
   <script defer src="./score-breakdown.js?v=2"></script>
-  <script defer src="./admin-players.js?v=1"></script>
-  <script defer src="./player-combo.js?v=1"></script>
+  <script defer src="./admin-players.js?v=2"></script>
+  <script defer src="./player-combo.js?v=2"></script>
   <script defer src="./all-picks-entry-card.js?v=3"></script>
-  <script defer src="./bakers-tab.js?v=2"></script>
-  <script defer src="./admin-bakers.js?v=1"></script>
-  <script defer src="./all-picks-filters.js?v=1"></script>
+  <script defer src="./bakers-tab.js?v=3"></script>
+  <script defer src="./admin-bakers.js?v=2"></script>
+  <script defer src="./all-picks-filters.js?v=2"></script>
   <script defer src="./leaderboard-medals.js?v=1"></script>
 </head>
 <body>
@@ -143,6 +142,31 @@
           <div id="bakerList"></div>
         </section>
 
+        <section id="adminBakerSection" class="card">
+          <h2>Manage bakers</h2>
+          <p class="muted">Update a baker's name, information and avatar. Bakers are not deleted here.</p>
+          <form id="adminBakerForm" class="grid">
+            <label>Baker
+              <select id="adminBakerSelect" required></select>
+            </label>
+            <label>Name
+              <input id="adminBakerName" type="text" required>
+            </label>
+            <label class="span-two">Information
+              <textarea id="adminBakerInformation" placeholder="Add a short baker description"></textarea>
+            </label>
+            <div class="span-two admin-baker-avatar-tools">
+              <h3>Current avatar</h3>
+              <div id="adminBakerAvatarPreview"></div>
+            </div>
+            <label class="span-two">Replace photo
+              <input id="adminBakerPhoto" type="file" accept="image/*">
+            </label>
+            <button type="submit">Update baker</button>
+          </form>
+          <p id="adminBakerStatus" class="status"></p>
+        </section>
+
         <section class="card">
           <h2>Current week</h2>
           <form id="currentWeekForm" class="grid">
@@ -189,6 +213,33 @@
             <button type="submit">Save results</button>
           </form>
           <p id="resultStatus" class="status"></p>
+        </section>
+
+        <section id="adminPlayerSection" class="card">
+          <h2>Manage players</h2>
+          <p class="muted">Edit a player's display name, replace their photo, delete their current avatar, or delete them.</p>
+          <form id="adminPlayerNameForm" class="grid">
+            <label>Player
+              <select id="adminPlayerSelect" required></select>
+            </label>
+            <label>Name
+              <input id="adminPlayerName" type="text" required>
+            </label>
+            <button type="submit">Update name</button>
+            <button id="deleteAdminPlayerButton" class="secondary" type="button">Delete player</button>
+          </form>
+          <div class="admin-player-avatar-tools">
+            <h3>Current avatar</h3>
+            <div id="adminPlayerAvatarPreview"></div>
+            <button id="deleteAdminPlayerAvatarButton" class="secondary hidden" type="button">Delete current avatar</button>
+          </div>
+          <form id="adminPlayerPhotoForm" class="grid admin-player-photo-form">
+            <label class="span-two">Replace photo
+              <input id="adminPlayerPhoto" type="file" accept="image/*" required>
+            </label>
+            <button type="submit">Update photo</button>
+          </form>
+          <p id="adminPlayerStatus" class="status"></p>
         </section>
       </section>
     </section>
