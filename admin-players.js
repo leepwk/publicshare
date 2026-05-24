@@ -155,81 +155,16 @@ async function deleteAdminPlayer() {
   }
 }
 
-function addAdminPlayerSection() {
-  const adminTab = document.getElementById("adminTab");
-  if (!adminTab || document.getElementById("adminPlayerSection")) return;
+function loadAdminPlayerTools() {
+  if (!isAdmin()) return;
+  refreshAdminPlayerData().catch((err) => setText("adminPlayerStatus", err.message || "Could not load players.", true));
+}
 
-  const section = document.createElement("section");
-  section.id = "adminPlayerSection";
-  section.className = "card";
-  section.innerHTML = `
-    <h2>Manage players</h2>
-    <p class="muted">Edit a player's display name, replace their photo, delete their current avatar, or delete them.</p>
-    <form id="adminPlayerNameForm" class="grid">
-      <label>Player
-        <select id="adminPlayerSelect" required></select>
-      </label>
-      <label>Name
-        <input id="adminPlayerName" type="text" required>
-      </label>
-      <button type="submit">Update name</button>
-      <button id="deleteAdminPlayerButton" class="secondary" type="button">Delete player</button>
-    </form>
-    <div class="admin-player-avatar-tools">
-      <h3>Current avatar</h3>
-      <div id="adminPlayerAvatarPreview"></div>
-      <button id="deleteAdminPlayerAvatarButton" class="secondary hidden" type="button">Delete current avatar</button>
-    </div>
-    <form id="adminPlayerPhotoForm" class="grid" style="margin-top:16px">
-      <label class="span-two">Replace photo
-        <input id="adminPlayerPhoto" type="file" accept="image/*" required>
-      </label>
-      <button type="submit">Update photo</button>
-    </form>
-    <p id="adminPlayerStatus" class="status"></p>
-  `;
-
-  adminTab.appendChild(section);
-
+document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("adminPlayerSelect")?.addEventListener("change", fillAdminPlayerEditor);
   document.getElementById("adminPlayerNameForm")?.addEventListener("submit", updateAdminPlayerName);
   document.getElementById("adminPlayerPhotoForm")?.addEventListener("submit", uploadAdminPlayerPhoto);
   document.getElementById("deleteAdminPlayerAvatarButton")?.addEventListener("click", deleteAdminPlayerAvatar);
   document.getElementById("deleteAdminPlayerButton")?.addEventListener("click", deleteAdminPlayer);
-}
-
-function loadAdminPlayerTools() {
-  if (!isAdmin()) return;
-  addAdminPlayerSection();
-  refreshAdminPlayerData().catch((err) => setText("adminPlayerStatus", err.message || "Could not load players.", true));
-}
-
-(function addAdminPlayerStyles() {
-  const style = document.createElement("style");
-  style.textContent = `
-    .admin-player-avatar-tools {
-      margin-top: 18px;
-    }
-
-    .admin-player-avatar-card {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: #fffdf9;
-      margin-bottom: 12px;
-    }
-
-    .admin-player-avatar-card .avatar {
-      width: 72px;
-      height: 72px;
-    }
-  `;
-  document.head.appendChild(style);
-})();
-
-document.addEventListener("DOMContentLoaded", () => {
   document.querySelector('[data-tab="admin"]')?.addEventListener("click", loadAdminPlayerTools);
 });
