@@ -124,95 +124,14 @@ async function updateAdminBaker(event) {
   }
 }
 
-function addAdminBakerSection() {
-  const adminTab = document.getElementById("adminTab");
-  const currentWeekSection = document.getElementById("currentWeekForm")?.closest("section");
-  if (!adminTab || document.getElementById("adminBakerSection")) return;
-
-  const section = document.createElement("section");
-  section.id = "adminBakerSection";
-  section.className = "card";
-  section.innerHTML = `
-    <h2>Manage bakers</h2>
-    <p class="muted">Update a baker's name, information and avatar. Bakers are not deleted here.</p>
-    <form id="adminBakerForm" class="grid">
-      <label>Baker
-        <select id="adminBakerSelect" required></select>
-      </label>
-      <label>Name
-        <input id="adminBakerName" type="text" required>
-      </label>
-      <label class="span-two">Information
-        <textarea id="adminBakerInformation" placeholder="Add a short baker description"></textarea>
-      </label>
-      <div class="span-two admin-baker-avatar-tools">
-        <h3>Current avatar</h3>
-        <div id="adminBakerAvatarPreview"></div>
-      </div>
-      <label class="span-two">Replace photo
-        <input id="adminBakerPhoto" type="file" accept="image/*">
-      </label>
-      <button type="submit">Update baker</button>
-    </form>
-    <p id="adminBakerStatus" class="status"></p>
-  `;
-
-  if (currentWeekSection) {
-    adminTab.insertBefore(section, currentWeekSection);
-  } else {
-    adminTab.appendChild(section);
-  }
-
-  document.getElementById("adminBakerSelect")?.addEventListener("change", fillAdminBakerEditor);
-  document.getElementById("adminBakerForm")?.addEventListener("submit", updateAdminBaker);
-}
-
 function loadAdminBakerTools() {
   if (!isAdmin()) return;
-  addAdminBakerSection();
   fillAdminBakerEditor();
 }
 
-(function addAdminBakerStyles() {
-  const style = document.createElement("style");
-  style.textContent = `
-    textarea {
-      width: 100%;
-      border: 1px solid var(--border);
-      background: #fffaf7;
-      color: var(--ink);
-      border-radius: 14px;
-      padding: 12px 14px;
-      outline: none;
-      font: inherit;
-      min-height: 120px;
-      resize: vertical;
-    }
-
-    textarea:focus {
-      border-color: var(--brand);
-      box-shadow: 0 0 0 4px rgba(201, 130, 150, 0.16);
-    }
-
-    .admin-baker-avatar-tools {
-      margin-top: 6px;
-    }
-
-    .admin-baker-avatar-card {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: #fffdf9;
-      margin-bottom: 12px;
-    }
-  `;
-  document.head.appendChild(style);
-})();
-
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("bakerForm")?.addEventListener("submit", addBakerWithDetails, true);
+  document.getElementById("adminBakerSelect")?.addEventListener("change", fillAdminBakerEditor);
+  document.getElementById("adminBakerForm")?.addEventListener("submit", updateAdminBaker);
   document.querySelector('[data-tab="admin"]')?.addEventListener("click", loadAdminBakerTools);
 });
