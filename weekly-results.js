@@ -55,9 +55,3 @@ async function renderActualResults() {
     el.innerHTML = `<p class="status error">${escapeHtml(err.message || "Could not load actual results.")}</p>`;
   }
 }
-
-const originalRenderLeaderboard = renderLeaderboard;
-renderLeaderboard = async function () {
-  await originalRenderLeaderboard();
-  await renderActualResults();
-};
