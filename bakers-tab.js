@@ -49,10 +49,3 @@ function renderBakersDirectory() {
     </div>
   `;
 }
-
-const originalSwitchTabForBakers = switchTab;
-switchTab = function (tabName) {
-  const result = originalSwitchTabForBakers(tabName);
-  if (tabName === "bakers") renderBakersDirectory();
-  return result;
-};
