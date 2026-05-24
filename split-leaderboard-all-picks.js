@@ -1,4 +1,4 @@
-async function renderAllPicks() {
+async function renderAllPicksTable() {
   const all = $("allPredictions");
   if (!all) return;
 
@@ -21,21 +21,6 @@ async function renderAllPicks() {
   }
 }
 
-renderLeaderboard = async function () {
-  const lb = $("leaderboard");
-  if (!lb) return;
-
-  lb.innerHTML = `<p class="muted">Loading...</p>`;
-
-  try {
-    const leaderboardRes = await state.supabase.from("leaderboard").select("player_name,total_points,avatar_path");
-    if (leaderboardRes.error) throw leaderboardRes.error;
-
-    const rows = leaderboardRes.data || [];
-    lb.innerHTML = rows.length
-      ? `<table><thead><tr><th>Position</th><th>Player</th><th>Points</th></tr></thead><tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${avatarHtml(r.avatar_path, r.player_name)}${escapeHtml(r.player_name)}</td><td>${r.total_points}</td></tr>`).join("")}</tbody></table>`
-      : `<p class="muted">No scores yet.</p>`;
-  } catch (err) {
-    lb.innerHTML = `<p class="status error">${escapeHtml(err.message || "Could not load leaderboard.")}</p>`;
-  }
-};
+async function renderAllPicks() {
+  await renderAllPicksPage();
+}

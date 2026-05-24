@@ -283,7 +283,7 @@ async function savePrediction(event) {
       updated_at: new Date().toISOString(),
     });
     setText("predictionStatus", "Picks saved.");
-    await renderLeaderboard();
+    await renderLeaderboardPage();
   } catch (err) {
     setText("predictionStatus", err.message || "Could not save picks.", true);
   }
@@ -333,7 +333,7 @@ async function saveResults(event) {
     setText("resultStatus", "Results saved. Active baker list updated.");
     await refreshAppData();
     await loadResultForWeek();
-    await renderLeaderboard();
+    await renderLeaderboardPage();
   } catch (err) {
     setText("resultStatus", err.message || "Could not save results.", true);
   }
@@ -366,22 +366,33 @@ async function setCurrentWeek(event) {
   }
 }
 
-async function renderLeaderboard() {
+async function renderLeaderboardTable() {
   const lb = $("leaderboard");
-  const all = $("allPredictions");
-  if (!lb || !all) return;
+  if (!lb) return;
 
   lb.innerHTML = `<p class="muted">Loading...</p>`;
-  all.innerHTML = "";
   try {
     const rows = await bakeoffApi.getLeaderboard();
     lb.innerHTML = rows.length ? `<table><thead><tr><th>Position</th><th>Player</th><th>Points</th></tr></thead><tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${avatarHtml(r.avatar_path, r.player_name)}${escapeHtml(r.player_name)}</td><td>${r.total_points}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">No scores yet.</p>`;
-
-    const picks = await bakeoffApi.getAllPredictions();
-    all.innerHTML = picks.length ? `<table><thead><tr><th>Player</th><th>Week</th><th>Technical</th><th>Star baker</th><th>Eliminated</th><th>Handshake</th></tr></thead><tbody>${picks.map((p) => `<tr><td>${escapeHtml(p.players?.name || "")}</td><td>Week ${p.weeks?.week_number || ""} - ${escapeHtml(p.weeks?.title || "")}</td><td>${escapeHtml(p.technical?.name || "")}</td><td>${escapeHtml(p.star?.name || "")}</td><td>${escapeHtml(p.eliminated?.name || "")}</td><td>${escapeHtml(p.handshake?.name || "No guess")}</td></tr>`).join("")}</tbody></table>` : `<p class="muted">No picks entered yet.</p>`;
   } catch (err) {
     lb.innerHTML = `<p class="status error">${escapeHtml(err.message || "Could not load leaderboard.")}</p>`;
   }
+}
+
+async function renderLeaderboardPage() {
+  await renderLeaderboardTable();
+  if (typeof renderActualResults === "function") await renderActualResults();
+  if (typeof renderScoreBreakdown === "function") await renderScoreBreakdown();
+  if (typeof applyLeaderboardMedals === "function") applyLeaderboardMedals();
+}
+
+async function renderLeaderboard() {
+  await renderLeaderboardPage();
+}
+
+async function renderAllPicksPage() {
+  if (typeof renderAllPicksTable === "function") await renderAllPicksTable();
+  if (typeof setupAllPicksFilters === "function") setupAllPicksFilters();
 }
 
 async function loadResultForWeek() {
@@ -402,34 +413,24 @@ async function loadResultForWeek() {
   }
 }
 
-async function uploadPlayerPhoto(event) {
-  event.preventDefault();
-  if (!isAdmin()) return setText("playerPhotoStatus", "Admin access required.", true);
-  try {
-    const playerId = $("photoPlayerSelect").value;
-    const file = $("playerPhotoFile").files[0];
-    if (!playerId) throw new Error("Choose a player");
-    if (!file) throw new Error("Choose a file");
-    const ext = file.name.split(".").pop();
-    const path = `${playerId}.${ext}`;
-    const upload = await state.supabase.storage.from(PLAYER_PHOTO_BUCKET).upload(path, file, { upsert: true });
-    if (upload.error) throw upload.error;
-    await bakeoffApi.updatePlayerAvatar(playerId, path);
-    setText("playerPhotoStatus", "Uploaded!");
-    await refreshAppData();
-    await renderLeaderboard();
-  } catch (err) {
-    setText("playerPhotoStatus", err.message || "Could not upload photo.", true);
-  }
-}
-
-function switchTab(tabName) {
-  if (tabName === "admin" && !isAdmin()) return;
+function activateTab(tabName) {
   document.querySelectorAll(".tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tabName));
   document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.add("hidden"));
-  $(`${tabName}Tab`).classList.remove("hidden");
-  if (tabName === "leaderboard") renderLeaderboard();
-  if (tabName === "admin") loadResultForWeek();
+  $(`${tabName}Tab`)?.classList.remove("hidden");
+}
+
+async function switchTab(tabName) {
+  if (tabName === "admin" && !isAdmin()) return;
+  activateTab(tabName);
+
+  if (tabName === "leaderboard") await renderLeaderboardPage();
+  if (tabName === "allPicks") await renderAllPicksPage();
+  if (tabName === "bakers" && typeof renderBakersDirectory === "function") renderBakersDirectory();
+  if (tabName === "admin") {
+    await loadResultForWeek();
+    if (typeof loadAdminBakerTools === "function") loadAdminBakerTools();
+    if (typeof loadAdminPlayerTools === "function") loadAdminPlayerTools();
+  }
 }
 
 async function handleLogin(event) {
@@ -457,10 +458,10 @@ async function startApp() {
   show("logoutButton", true);
   setText("loginStatus", "");
   handleAdminVisibility();
-  switchTab("leaderboard");
+  await switchTab("leaderboard");
   await refreshAppData();
   if (isAdmin()) await loadResultForWeek();
-  await renderLeaderboard();
+  await renderLeaderboardPage();
 }
 
 function bindEvents() {
@@ -473,9 +474,8 @@ function bindEvents() {
   $("currentWeekForm").addEventListener("submit", setCurrentWeek);
   $("weekLockForm")?.addEventListener("submit", toggleWeekLock);
   $("lockWeekSelect")?.addEventListener("change", updateWeekLockButton);
-  $("refreshButton").addEventListener("click", renderLeaderboard);
+  $("refreshButton").addEventListener("click", renderLeaderboardPage);
   $("resultWeekSelect").addEventListener("change", loadResultForWeek);
-  $("playerPhotoForm")?.addEventListener("submit", uploadPlayerPhoto);
   document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
 }
 

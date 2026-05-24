@@ -78,9 +78,3 @@ async function renderScoreBreakdown() {
     el.innerHTML = `<p class="status error">${escapeHtml(err.message || "Could not load score breakdown.")}</p>`;
   }
 }
-
-const scoreBreakdownRenderLeaderboard = renderLeaderboard;
-renderLeaderboard = async function () {
-  await scoreBreakdownRenderLeaderboard();
-  await renderScoreBreakdown();
-};
