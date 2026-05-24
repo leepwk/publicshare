@@ -13,10 +13,4 @@ function applyLeaderboardMedals() {
   });
 }
 
-const originalRenderLeaderboardForMedals = renderLeaderboard;
-renderLeaderboard = async function () {
-  await originalRenderLeaderboardForMedals();
-  applyLeaderboardMedals();
-};
-
 document.addEventListener("DOMContentLoaded", applyLeaderboardMedals);
