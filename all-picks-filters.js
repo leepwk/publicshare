@@ -116,37 +116,4 @@ renderAllPicks = async function () {
   setupAllPicksFilters();
 };
 
-(function addAllPicksFilterStyles() {
-  const style = document.createElement("style");
-  style.textContent = `
-    .filter-panel {
-      display: grid;
-      grid-template-columns: minmax(180px, 2fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
-      gap: 12px;
-      align-items: end;
-      margin: 0 0 18px;
-      padding: 14px;
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      background: #fffaf5;
-    }
-
-    .filter-panel .hint {
-      margin: 0;
-    }
-
-    @media (max-width: 760px) {
-      .filter-panel {
-        grid-template-columns: 1fr;
-        padding: 12px;
-      }
-
-      .filter-panel button {
-        width: 100%;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-})();
-
 document.addEventListener("DOMContentLoaded", setupAllPicksFilters);
