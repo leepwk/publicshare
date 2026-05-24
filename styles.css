@@ -116,12 +116,14 @@ label {
 
 input,
 select,
-button {
+button,
+textarea {
   font: inherit;
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   border: 1px solid var(--border);
   background: #fffaf7;
@@ -131,12 +133,18 @@ select {
   outline: none;
 }
 
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
 select[multiple] {
   min-height: 150px;
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: var(--brand);
   box-shadow: 0 0 0 4px rgba(201, 130, 150, 0.16);
 }
@@ -301,6 +309,157 @@ footer {
   gap: 8px;
 }
 
+.checkbox-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fffdfb;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.checkbox-option input {
+  width: auto;
+  accent-color: var(--brand);
+}
+
+.baker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.baker-card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  background: #fffdf9;
+}
+
+.baker-card-header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.baker-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.baker-avatar-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9eaf0;
+  color: var(--brand-dark);
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.baker-card-heading {
+  min-width: 0;
+}
+
+.baker-card-heading h3 {
+  margin: 0 0 8px;
+}
+
+.baker-information p {
+  margin: 0 0 12px;
+  line-height: 1.55;
+  white-space: normal;
+}
+
+.baker-information p:last-child {
+  margin-bottom: 0;
+}
+
+.baker-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  border: 1px solid var(--border);
+}
+
+.baker-status.active {
+  color: var(--brand-dark);
+  background: #fff1f5;
+}
+
+.baker-status.eliminated {
+  color: var(--muted);
+  background: #fffaf7;
+}
+
+.admin-baker-avatar-tools,
+.admin-player-avatar-tools {
+  margin-top: 18px;
+}
+
+.admin-baker-avatar-tools {
+  margin-top: 6px;
+}
+
+.admin-baker-avatar-card,
+.admin-player-avatar-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fffdf9;
+  margin-bottom: 12px;
+}
+
+.admin-player-avatar-card {
+  gap: 10px;
+}
+
+.admin-player-avatar-card .avatar {
+  width: 72px;
+  height: 72px;
+}
+
+.admin-player-photo-form {
+  margin-top: 16px;
+}
+
+.filter-panel {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fffaf5;
+}
+
+.filter-panel .hint {
+  margin: 0;
+}
+
 @media (max-width: 760px) {
   .site-header {
     display: block;
@@ -311,7 +470,9 @@ footer {
     margin-top: 10px;
   }
 
-  .grid {
+  .grid,
+  .filter-panel,
+  .checkbox-list {
     grid-template-columns: 1fr;
   }
 
@@ -327,5 +488,27 @@ footer {
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+  }
+
+  .filter-panel {
+    padding: 12px;
+  }
+
+  .filter-panel button {
+    width: 100%;
+  }
+
+  .baker-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 460px) {
+  .baker-card-header {
+    display: block;
+  }
+
+  .baker-avatar {
+    margin-bottom: 12px;
   }
 }
