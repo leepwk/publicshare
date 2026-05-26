@@ -1,9 +1,9 @@
-const ADMIN_EMAIL = "admin@betterworld.com";
 const PLAYER_PHOTO_BUCKET = "player-photos";
 
 const state = {
   supabase: null,
   currentUser: null,
+  isAdmin: false,
   weeks: [],
   bakers: [],
   activeBakers: [],
@@ -25,7 +25,20 @@ function show(id, visible) {
 }
 
 function isAdmin() {
-  return state.currentUser?.email?.toLowerCase() === ADMIN_EMAIL;
+  return state.isAdmin;
+}
+
+async function loadAdminStatus() {
+  state.isAdmin = false;
+
+  const { data, error } = await state.supabase.rpc("is_admin");
+  if (error) {
+    console.error("Could not check admin status", error);
+    return false;
+  }
+
+  state.isAdmin = Boolean(data);
+  return state.isAdmin;
 }
 
 function handleAdminVisibility() {
@@ -444,6 +457,7 @@ async function handleLogin(event) {
 async function logout() {
   await state.supabase.auth.signOut();
   state.currentUser = null;
+  state.isAdmin = false;
   show("loginView", true);
   show("appView", false);
   show("logoutButton", false);
@@ -453,6 +467,7 @@ async function startApp() {
   const { data, error } = await state.supabase.auth.getUser();
   if (error) throw error;
   state.currentUser = data.user;
+  await loadAdminStatus();
   show("loginView", false);
   show("appView", true);
   show("logoutButton", true);
