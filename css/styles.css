@@ -48,7 +48,19 @@ button { border: 0; border-radius: 999px; padding: 12px 18px; background: var(--
 button:hover { transform: translateY(-1px); background: var(--brand-dark); }
 button.secondary { background: #fffdf9; color: var(--brand-dark); border: 1px solid var(--border); box-shadow: none; }
 button.secondary:hover { background: #fff1f5; }
-.tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding: 10px 0;
+  background: rgba(255, 247, 239, 0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
 .tab { background: #fffdf9; color: var(--brand-dark); border: 1px solid var(--border); box-shadow: none; }
 .tab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
 .section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
@@ -98,6 +110,15 @@ footer { padding: 12px 0 36px; color: var(--muted); }
   .grid, .filter-panel, .checkbox-list { grid-template-columns: 1fr; }
   .section-title { display: block; }
   .section-title button { margin-top: 10px; }
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding-top: calc(10px + env(safe-area-inset-top));
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; }
   table { display: block; overflow-x: auto; white-space: nowrap; }
   .filter-panel { padding: 12px; }
   .filter-panel button { width: 100%; }
